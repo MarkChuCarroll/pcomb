@@ -18,12 +18,17 @@ package org.goodmath.tests.pcomb;
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.goodmath.pcomb.Pair;
 import org.goodmath.pcomb.Parser;
+import org.goodmath.pcomb.Parser.Success;
+import org.goodmath.pcomb.Parser.Transformer;
+import org.goodmath.pcomb.RefParser;
 import org.goodmath.pcomb.StringParserInput;
 import org.goodmath.pcomb.Parser.ParseResult;
+import org.goodmath.pcomb.Transform;
 import org.junit.Test;
 
 public class ParserTest {
@@ -54,9 +59,10 @@ public class ParserTest {
     Parser<Character, Character> aparser = Parser.consume('a');
     Parser<Character, Character> bparser = Parser.consume('b');
     Parser<Character, Character> cparser = Parser.consume('c');
-    Parser<Character, Pair<Character, Pair<Character, Character>>> abcparser = Parser.seq(aparser, Parser.seq(bparser, cparser));
-    ParseResult<Character, Pair<Character, Pair<Character, Character>>> result = abcparser.parse(in);
-    assertSuccessfulParseEquals(result, new Pair<Character, Pair<Character, Character>>('a', new Pair<Character, Character>('b', 'c')));
+    Parser<Character, List<Character>> abcparser = Parser.seq(aparser, bparser, cparser);
+    ParseResult<Character, List<Character>> result = abcparser.parse(in);
+    assertSuccessfulParseEquals(result,
+        Arrays.asList(new Character[] { 'a',  'b', 'c' }));
   }
 
   @Test
@@ -104,9 +110,9 @@ public class ParserTest {
     StringParserInput in = new StringParserInput("abc");
     Parser<Character, Character> aparser = Parser.consume('a').opt('0');
     Parser<Character, Character> bparser = Parser.consume('b');
-        Parser<Character, Pair<Character, Pair<Character, Character>>> abcparser = Parser.seq(aparser, Parser.seq(bparser, aparser));
-    ParseResult<Character, Pair<Character, Pair<Character, Character>>> result = abcparser.parse(in);
-    assertSuccessfulParseEquals(result, new Pair<Character, Pair<Character, Character>>('a', new Pair<Character, Character>('b', '0')));
+    Parser<Character, List<Character>> abcparser = Parser.seq(aparser, bparser, aparser);
+    ParseResult<Character, List<Character>> result = abcparser.parse(in);
+    assertSuccessfulParseEquals(result, Arrays.asList(new Character[] { 'a', 'b', '0' }));
     assertFalse(result.getRest().atEnd());
   }
 
@@ -116,10 +122,61 @@ public class ParserTest {
     Parser<Character, Character> aparser = Parser.consume('a');
     Parser<Character, Character> bparser = Parser.consume('b');
     Parser<Character, Character> eofparser = Parser.parseEOF('x');
-    Parser<Character, Pair<Character, Pair<Character, Character>>> abcparser = Parser.seq(aparser, Parser.seq(bparser, eofparser));
-    ParseResult<Character, Pair<Character, Pair<Character, Character>>> result = abcparser.parse(in);
-    assertSuccessfulParseEquals(result, new Pair<Character, Pair<Character, Character>>('a', new Pair<Character, Character>('b', 'x')));
+    Parser<Character, List<Character>> abcparser = Parser.seq(aparser, bparser, eofparser);
+    ParseResult<Character, List<Character>> result = abcparser.parse(in);
+    assertSuccessfulParseEquals(result,
+        Arrays.asList(new Character[] { 'a', 'b', 'x' }));
   }
 
+  @Test
+  public void testRefParser() {
+    StringParserInput in = new StringParserInput("(((a)))");
+    Parser<Character, Character> lp = Parser.consume('(');
+    Parser<Character, Character> rp = Parser.consume(')');
+    Parser<Character, Character> a = Parser.consume('a');
+    RefParser<Character, Character> ref = new RefParser<Character, Character>();
+    Parser<Character, List<Character>> parens = Parser.seq(lp, ref, rp);
+    Transformer<List<Character>, Character> listToChar = new Transformer<List<Character>, Character>() {
+      @Override
+      public Character transform(List<Character> in) {
+        return '1';
+      }
+    };
+    Parser<Character, Character> choice = Parser.choice(parens.transform(listToChar), a);
+    ref.setRef(choice);
+    ParseResult<Character, Character> result = choice.parse(in);
+    assertTrue(result instanceof Success);
+  }
 
+  @Test
+  public void testParensParser() {
+    // P -> ( P+ )
+    // P -> a
+    Transformer<List<String>, String> listToString = new Transformer<List<String>, String>() {
+      @Override
+      public String transform(List<String> in) {
+        return in.toString();
+      }
+    };
+    Transformer<Character, String> charToString = new Transformer<Character, String>() {
+      @Override
+      public String transform(Character in) {
+        return in.toString();
+      }
+    };
+
+    Parser<Character, String> lp = Parser.consume('(').transform(charToString);
+    Parser<Character, String> rp = Parser.consume(')').transform(charToString);
+    Parser<Character, String> a = Parser.consume('a').transform(charToString);
+    RefParser<Character, String> ref = new RefParser<Character, String>();
+    Parser<Character, String> parens = Parser.seq(lp, ref.many(1).transform(listToString), rp).transform(listToString);
+    Parser<Character, String> choice = Parser.choice(parens, a);
+    ref.setRef(choice);
+    StringParserInput in = new StringParserInput("(((a)((aa))))");
+    ParseResult<Character, String> result = choice.parse(in);
+    assertTrue(result instanceof Success);
+    Success<Character, String> success = (Success<Character, String>) result;
+    assertEquals("[(, [[(, [[(, [a], )], [(, [[(, [a, a], )]], )]], )]], )]", success.getResult());
+
+  }
 }

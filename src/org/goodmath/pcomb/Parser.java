@@ -15,6 +15,7 @@
  */
 package org.goodmath.pcomb;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -72,8 +73,12 @@ public abstract class Parser<In, Out> {
    * @param p2
    * @return a parser that parses p1 followed by p2.
    */
-  public static <In, Out1, Out2, Out> Parser<In, Pair<Out1, Out2>> seq(Parser<In, Out1> p1, Parser<In, Out2> p2) {
-    return new SeqParser<In, Out1, Out2>(p1, p2);
+  public static <In, Out> Parser<In, List<Out>> seq(Parser<In, Out>... parsers) {
+    List<Parser<In, Out>> plist = new ArrayList<Parser<In, Out>>();
+    for (Parser<In, Out> p: parsers) {
+      plist.add(p);
+    }
+    return new SeqParser<In, Out>(plist);
   }
 
   /**

@@ -15,28 +15,28 @@
  */
 package org.goodmath.pcomb;
 
-public class SeqParser<In, Out1, Out2> extends Parser<In, Pair<Out1, Out2>> {
-  private final Parser<In, Out1> _first;
-  private final Parser<In, Out2> _second;
+import java.util.ArrayList;
+import java.util.List;
 
-  public SeqParser(Parser<In, Out1> first, Parser<In, Out2> second) {
-    this._first = first;
-    this._second = second;
+public class SeqParser<In, Out> extends Parser<In, List<Out>> {
+  private final List<Parser<In, Out>> _parsers;
+
+  public SeqParser(List<Parser<In, Out>> parsers) {
+    _parsers = parsers;
   }
 
   @Override
-  public ParseResult<In, Pair<Out1, Out2>> parse(ParserInput<In> in) {
-    ParseResult<In, Out1> out1 = _first.parse(in);
-    if (out1 instanceof Parser.Failure) {
-      return new Failure<In, Pair<Out1, Out2>>();
+  public ParseResult<In, List<Out>>  parse(ParserInput<In> in) {
+    List<Out> result_vals = new ArrayList<Out>();
+    for (Parser<In, Out> p : _parsers) {
+      ParseResult<In, Out> out = p.parse(in);
+      if (out instanceof Parser.Failure) {
+        return new Failure<In, List<Out>>();
+      }
+      Parser.Success<In, Out> success = (Parser.Success<In, Out>)out;
+      result_vals.add(success.getResult());
+      in = success.getRest();
     }
-    Parser.Success<In, Out1> success1 = (Parser.Success<In, Out1>)out1;
-    ParseResult<In, Out2> out2 = _second.parse(success1.getRest());
-    if (out2 instanceof Parser.Failure) {
-      return new Failure<In, Pair<Out1, Out2>>();
-    }
-    Parser.Success<In, Out2> success2 = (Parser.Success<In, Out2>)out2;
-    return new Parser.Success<In, Pair<Out1, Out2>>(new Pair<Out1, Out2>(success1.getResult(),
-        success2.getResult()), success2.getRest());
+    return new Parser.Success<In, List<Out>>(result_vals, in);
   }
 }

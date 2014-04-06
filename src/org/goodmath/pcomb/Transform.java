@@ -1,9 +1,9 @@
 package org.goodmath.pcomb;
 
 public class Transform<In, Out1, Out2> extends Parser<In, Out2> {
-  
-  private Parser<In, Out1> _base;
-  private org.goodmath.pcomb.Parser.Transformer<Out1, Out2> _trans;
+
+  private final Parser<In, Out1> _base;
+  private final Transformer<Out1, Out2> _trans;
 
   public Transform(Parser<In, Out1> base, Transformer<Out1, Out2> trans) {
     this._base = base;
@@ -11,7 +11,7 @@ public class Transform<In, Out1, Out2> extends Parser<In, Out2> {
   }
 
   @Override
-  public org.goodmath.pcomb.Parser.ParseResult<In, Out2> parse(
+  public ParseResult<In, Out2> parse(
       ParserInput<In> in) {
     ParseResult<In, Out1> p = _base.parse(in);
     if (p instanceof Failure) {
