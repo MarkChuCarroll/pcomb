@@ -21,14 +21,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.goodmath.pcomb.Pair;
+import org.goodmath.pcomb.CharSetParser;
 import org.goodmath.pcomb.Parser;
 import org.goodmath.pcomb.Parser.Success;
-import org.goodmath.pcomb.Parser.Transformer;
+import org.goodmath.pcomb.Transformer;
 import org.goodmath.pcomb.RefParser;
 import org.goodmath.pcomb.StringParserInput;
 import org.goodmath.pcomb.Parser.ParseResult;
-import org.goodmath.pcomb.Transform;
 import org.junit.Test;
 
 public class ParserTest {
@@ -165,18 +164,18 @@ public class ParserTest {
       }
     };
 
-    Parser<Character, String> lp = Parser.consume('(').transform(charToString);
-    Parser<Character, String> rp = Parser.consume(')').transform(charToString);
-    Parser<Character, String> a = Parser.consume('a').transform(charToString);
+    Parser<Character, String> lp = Parser.consumeChar('(').transform(charToString);
+    Parser<Character, String> rp = Parser.consumeChar(')').transform(charToString);
+    Parser<Character, String> id = Parser.charSet("abcdefghijklmnopqrstuvwxyz").transform(charToString);
     RefParser<Character, String> ref = new RefParser<Character, String>();
     Parser<Character, String> parens = Parser.seq(lp, ref.many(1).transform(listToString), rp).transform(listToString);
-    Parser<Character, String> choice = Parser.choice(parens, a);
+    Parser<Character, String> choice = Parser.choice(parens, id);
     ref.setRef(choice);
-    StringParserInput in = new StringParserInput("(((a)((aa))))");
+    StringParserInput in = new StringParserInput("(((a (d e) (q)) ((a b c))))");
     ParseResult<Character, String> result = choice.parse(in);
     assertTrue(result instanceof Success);
     Success<Character, String> success = (Success<Character, String>) result;
-    assertEquals("[(, [[(, [[(, [a], )], [(, [[(, [a, a], )]], )]], )]], )]", success.getResult());
+    assertEquals("[(, [[(, [[(, [a, [(, [d, e], )], [(, [q], )]], )], [(, [[(, [a, b, c], )]], )]], )]], )]", success.getResult());
 
   }
 }

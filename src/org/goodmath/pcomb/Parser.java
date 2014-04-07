@@ -117,14 +117,6 @@ public abstract class Parser<In, Out> {
     return new RefParser<In, Out>();
   }
 
-  /**
-   * An interface for a parse action that transforms one output type to another.
-   * @param <X>
-   * @param <Y>
-   */
-  public interface Transformer<X, Y> {
-    Y transform(X in);
-  }
 
   /**
    * Create a parser that wraps another, and transforms its result value.
@@ -138,7 +130,7 @@ public abstract class Parser<In, Out> {
 
 
   /**
-   * Create a parser which consumes a specific input; anything else will fail.
+   * Create a parser which consumes a specific input token; anything else will fail.
    * @param i the input to parse.
    * @return
    */
@@ -155,6 +147,23 @@ public abstract class Parser<In, Out> {
       }
     };
   }
+
+  public static Parser<Character, Character> space =
+      new CharSetParser(" \t\n").many(0).transform(new Transformer<List<Character>, Character>() {
+        @Override
+        public Character transform(List<Character> in) {
+          return ' ';
+        }
+      });
+
+  public static Parser<Character, Character> consumeChar(final char c) {
+    return  seq(space, consume(c)).transform(Transformer.<Character>second());
+  }
+
+  public static Parser<Character, Character> charSet(final String chars) {
+    return seq(space, new CharSetParser(chars)).transform(Transformer.<Character>second());
+  }
+
 
   /**
    * Create a parser which only succeeds on EOF.
