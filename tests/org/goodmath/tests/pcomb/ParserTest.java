@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.goodmath.pcomb.CharSetParser;
 import org.goodmath.pcomb.Parser;
 import org.goodmath.pcomb.Parser.Success;
 import org.goodmath.pcomb.Transformer;
@@ -41,9 +40,9 @@ public class ParserTest {
   @Test
   public void testConsumeOne() {
     StringParserInput in = new StringParserInput("abc");
-    Parser<Character, Character> aparser = Parser.consume('a');
-    Parser<Character, Character> bparser = Parser.consume('b');
-    Parser<Character, Character> cparser = Parser.consume('c');
+    Parser<Character, Character> aparser = Parser.match('a');
+    Parser<Character, Character> bparser = Parser.match('b');
+    Parser<Character, Character> cparser = Parser.match('c');
     ParseResult<Character, Character> aresult = aparser.parse(in);
     assertSuccessfulParseEquals(aresult, 'a');
     ParseResult<Character, Character> bresult = bparser.parse(aresult.getRest());
@@ -55,22 +54,31 @@ public class ParserTest {
   @Test
   public void testConsumeSeq() {
     StringParserInput in = new StringParserInput("abc");
-    Parser<Character, Character> aparser = Parser.consume('a');
-    Parser<Character, Character> bparser = Parser.consume('b');
-    Parser<Character, Character> cparser = Parser.consume('c');
-    Parser<Character, List<Character>> abcparser = Parser.seq(aparser, bparser, cparser);
+    Parser<Character, Character> aparser = Parser.match('a');
+    Parser<Character, Character> bparser = Parser.match('b');
+    Parser<Character, Character> cparser = Parser.match('c');
+    Parser<Character, List<Character>> abcparser =  Parser.seq(aparser).andThen(bparser).andThen(cparser);
     ParseResult<Character, List<Character>> result = abcparser.parse(in);
     assertSuccessfulParseEquals(result,
         Arrays.asList(new Character[] { 'a',  'b', 'c' }));
   }
 
   @Test
+  public void testAndCombinator() {
+    StringParserInput in = new StringParserInput("abc");
+    Parser<Character, Character> aparser = Parser.match('a');
+    Parser<Character, Character> bparser = Parser.match('b');
+    Parser<Character, Character> cparser = Parser.match('c');
+    Parser<Character, Character> abcparser =  aparser.andSecond(bparser).andFirst(cparser);
+    ParseResult<Character, Character> result = abcparser.parse(in);
+    assertSuccessfulParseEquals(result, 'b');
+  }
+
+
+  @Test
   public void testAlternatives() {
     StringParserInput in = new StringParserInput("abc");
-    final Parser<Character, Character> aparser = Parser.consume('a');
-    final Parser<Character, Character> bparser = Parser.consume('b');
-    final Parser<Character, Character> cparser = Parser.consume('c');
-    Parser<Character, Character> choice = Parser.choice(aparser, bparser, cparser);
+    Parser<Character, Character> choice = Parser.match('a').or(Parser.match('b')).or(Parser.match('c'));
     ParseResult<Character, Character> aresult = choice.parse(in);
     assertSuccessfulParseEquals(aresult, 'a');
     ParseResult<Character, Character> bresult = choice.parse(aresult.getRest());
@@ -80,12 +88,23 @@ public class ParserTest {
   }
 
   @Test
+  public void testOrCombinator() {
+    StringParserInput in = new StringParserInput("abc");
+    Parser<Character, Character> choice = Parser.match('a').or(Parser.match('b')).or(Parser.match('c'));
+
+    ParseResult<Character, Character> aresult = choice.parse(in);
+    assertSuccessfulParseEquals(aresult, 'a');
+    ParseResult<Character, Character> bresult = choice.parse(aresult.getRest());
+    assertSuccessfulParseEquals(bresult, 'b');
+    ParseResult<Character, Character> cresult = choice.parse(bresult.getRest());
+    assertSuccessfulParseEquals(cresult, 'c');
+  }
+
+
+  @Test
   public void testRepetition() {
     StringParserInput in = new StringParserInput("abc");
-    final Parser<Character, Character> aparser = Parser.consume('a');
-    final Parser<Character, Character> bparser = Parser.consume('b');
-    final Parser<Character, Character> cparser = Parser.consume('c');
-    Parser<Character, Character> choice = Parser.choice(aparser, bparser, cparser);
+    Parser<Character, Character> choice = Parser.match('a').or(Parser.match('b')).or(Parser.match('c'));
     Parser<Character, List<Character>> rep0 = choice.many(0);
     Parser<Character, List<Character>> rep2 = choice.many(2);
     Parser<Character, List<Character>> rep4 = choice.many(4);
@@ -107,9 +126,9 @@ public class ParserTest {
   @Test
   public void testOpt() {
     StringParserInput in = new StringParserInput("abc");
-    Parser<Character, Character> aparser = Parser.consume('a').opt('0');
-    Parser<Character, Character> bparser = Parser.consume('b');
-    Parser<Character, List<Character>> abcparser = Parser.seq(aparser, bparser, aparser);
+    Parser<Character, Character> aparser = Parser.match('a').opt('0');
+    Parser<Character, Character> bparser = Parser.match('b');
+    Parser<Character, List<Character>> abcparser = Parser.seq(aparser).andThen(bparser).andThen(aparser);
     ParseResult<Character, List<Character>> result = abcparser.parse(in);
     assertSuccessfulParseEquals(result, Arrays.asList(new Character[] { 'a', 'b', '0' }));
     assertFalse(result.getRest().atEnd());
@@ -118,10 +137,10 @@ public class ParserTest {
   @Test
   public void testEOF() {
     StringParserInput in = new StringParserInput("ab");
-    Parser<Character, Character> aparser = Parser.consume('a');
-    Parser<Character, Character> bparser = Parser.consume('b');
+    Parser<Character, Character> aparser = Parser.match('a');
+    Parser<Character, Character> bparser = Parser.match('b');
     Parser<Character, Character> eofparser = Parser.parseEOF('x');
-    Parser<Character, List<Character>> abcparser = Parser.seq(aparser, bparser, eofparser);
+    Parser<Character, List<Character>> abcparser = Parser.seq(aparser).andThen(bparser).andThen(eofparser);
     ParseResult<Character, List<Character>> result = abcparser.parse(in);
     assertSuccessfulParseEquals(result,
         Arrays.asList(new Character[] { 'a', 'b', 'x' }));
@@ -130,18 +149,9 @@ public class ParserTest {
   @Test
   public void testRefParser() {
     StringParserInput in = new StringParserInput("(((a)))");
-    Parser<Character, Character> lp = Parser.consume('(');
-    Parser<Character, Character> rp = Parser.consume(')');
-    Parser<Character, Character> a = Parser.consume('a');
     RefParser<Character, Character> ref = new RefParser<Character, Character>();
-    Parser<Character, List<Character>> parens = Parser.seq(lp, ref, rp);
-    Transformer<List<Character>, Character> listToChar = new Transformer<List<Character>, Character>() {
-      @Override
-      public Character transform(List<Character> in) {
-        return '1';
-      }
-    };
-    Parser<Character, Character> choice = Parser.choice(parens.transform(listToChar), a);
+    Parser<Character, Character> parens = Parser.match('(').andSecond(ref).andFirst(Parser.match(')'));
+    Parser<Character, Character> choice = parens.or(Parser.match('a'));
     ref.setRef(choice);
     ParseResult<Character, Character> result = choice.parse(in);
     assertTrue(result instanceof Success);
@@ -164,18 +174,18 @@ public class ParserTest {
       }
     };
 
-    Parser<Character, String> lp = Parser.consumeChar('(').transform(charToString);
-    Parser<Character, String> rp = Parser.consumeChar(')').transform(charToString);
     Parser<Character, String> id = Parser.charSet("abcdefghijklmnopqrstuvwxyz").transform(charToString);
     RefParser<Character, String> ref = new RefParser<Character, String>();
-    Parser<Character, String> parens = Parser.seq(lp, ref.many(1).transform(listToString), rp).transform(listToString);
-    Parser<Character, String> choice = Parser.choice(parens, id);
+    Parser<Character, String> parens = Parser.matchWithSpaces('(').andSecond(ref.many(1).transform(listToString)).andFirst(Parser.matchWithSpaces(')'));
+    Parser<Character, String> choice = parens.or(id);
     ref.setRef(choice);
+
     StringParserInput in = new StringParserInput("(((a (d e) (q)) ((a b c))))");
     ParseResult<Character, String> result = choice.parse(in);
     assertTrue(result instanceof Success);
     Success<Character, String> success = (Success<Character, String>) result;
-    assertEquals("[(, [[(, [[(, [a, [(, [d, e], )], [(, [q], )]], )], [(, [[(, [a, b, c], )]], )]], )]], )]", success.getResult());
+
+    assertEquals("[[[a, [d, e], [q]], [[a, b, c]]]]", success.getResult());
 
   }
 }

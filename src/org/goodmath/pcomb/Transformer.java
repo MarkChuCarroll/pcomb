@@ -36,8 +36,6 @@ public abstract class Transformer<From, To> {
       }
     };
   }
-
-
 }
 
 

@@ -15,8 +15,6 @@
  */
 package org.goodmath.pcomb;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -67,28 +65,73 @@ public abstract class Parser<In, Out> {
    */
   public abstract ParseResult<In, Out> parse(ParserInput<In> in);
 
-  /**
-   * Create a parser that chains together two parsers to execute in sequence.
-   * @param p1
-   * @param p2
-   * @return a parser that parses p1 followed by p2.
-   */
-  public static <In, Out> Parser<In, List<Out>> seq(Parser<In, Out>... parsers) {
-    List<Parser<In, Out>> plist = new ArrayList<Parser<In, Out>>();
-    for (Parser<In, Out> p: parsers) {
-      plist.add(p);
-    }
-    return new SeqParser<In, Out>(plist);
+  public <Out2> Parser<In, Pair<Out, Out2>> andPair(final Parser<In, Out2> other) {
+      return new Parser<In, Pair<Out, Out2>>() {
+        @Override
+        public ParseResult<In, Pair<Out, Out2>> parse(
+            ParserInput<In> in) {
+          ParseResult<In, Out> firstStep = Parser.this.parse(in);
+          if (firstStep instanceof Failure) {
+            return new Failure<In, Pair<Out, Out2>>();
+          }
+          Out firstResult = ((Success<In, Out>)firstStep).getResult();
+          ParseResult<In, Out2> secondStep = other.parse(firstStep.getRest());
+          if (secondStep instanceof Failure) {
+            return new Failure<In, Pair<Out, Out2>>();
+          }
+          Out2 secondResult = ((Success<In, Out2>)secondStep).getResult();
+          return new Success<In, Pair<Out, Out2>>(new Pair<Out, Out2>(firstResult, secondResult), secondStep.getRest());
+        }
+
+      };
+  }
+
+  public <Out2> Parser<In, Out> andFirst(final Parser<In, Out2> other) {
+    return new Parser<In, Out>() {
+      @Override
+      public ParseResult<In, Out> parse(
+          ParserInput<In> in) {
+        ParseResult<In, Out> firstStep = Parser.this.parse(in);
+        if (firstStep instanceof Failure) {
+          return firstStep;
+        }
+        Out firstResult = ((Success<In, Out>)firstStep).getResult();
+        ParseResult<In, Out2> secondStep = other.parse(firstStep.getRest());
+        if (secondStep instanceof Failure) {
+          return new Failure<In, Out>();
+        }
+        return new Success<In, Out>(firstResult, secondStep.getRest());
+      }
+    };
+  }
+
+  public <Out2> Parser<In, Out2> andSecond(final Parser<In, Out2> other) {
+    return new Parser<In, Out2>() {
+      @Override
+      public ParseResult<In, Out2> parse(
+          ParserInput<In> in) {
+        ParseResult<In, Out> firstStep = Parser.this.parse(in);
+        if (firstStep instanceof Failure) {
+          return new Failure<In, Out2>();
+        }
+        ParseResult<In, Out2> secondStep = other.parse(firstStep.getRest());
+        if (secondStep instanceof Failure) {
+          return secondStep;
+        }
+        return secondStep;
+      }
+    };
+  }
+
+  public Parser<In, Out> or(final Parser<In, Out> other) {
+    return new ChoiceParser<In, Out>(this, other);
   }
 
   /**
-   * Create a choice parser: take two parsers. If the first succeeds, then return its result.
-   * Otherwise, run the second parser, and return its result.
-   * @param choices
-   * @return the result of a parse of either p1, p2, or failure.
+   * Create a parser that chains together a group of parsers to execute in sequence.
    */
-  public static <In, Out> Parser<In, Out> choice(Parser<In, Out>... choices) {
-    return new ChoiceParser<In, Out>(Arrays.asList(choices));
+  public static <In, Out> SeqParser<In, Out> seq(Parser<In, Out> first) {
+    return new SeqParser<In, Out>(first);
   }
 
   /**
@@ -134,7 +177,7 @@ public abstract class Parser<In, Out> {
    * @param i the input to parse.
    * @return
    */
-  public static <In> Parser<In, In> consume(final In i) {
+  public static <In> Parser<In, In> match(final In i) {
     return new Parser<In, In>() {
       @Override
       public org.goodmath.pcomb.Parser.ParseResult<In, In> parse(
@@ -156,12 +199,12 @@ public abstract class Parser<In, Out> {
         }
       });
 
-  public static Parser<Character, Character> consumeChar(final char c) {
-    return  seq(space, consume(c)).transform(Transformer.<Character>second());
+  public static Parser<Character, Character> matchWithSpaces(final char c) {
+    return space.andSecond(match(c));
   }
 
   public static Parser<Character, Character> charSet(final String chars) {
-    return seq(space, new CharSetParser(chars)).transform(Transformer.<Character>second());
+    return space.andSecond(new CharSetParser(chars));
   }
 
 

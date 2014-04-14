@@ -25,6 +25,18 @@ public class SeqParser<In, Out> extends Parser<In, List<Out>> {
     _parsers = parsers;
   }
 
+  public SeqParser(Parser<In, Out> first) {
+    _parsers = new ArrayList<Parser<In, Out>>();
+    _parsers.add(first);
+  }
+
+  public SeqParser<In, Out> andThen(Parser<In, Out> next) {
+    List<Parser<In, Out>> parsers = new ArrayList<Parser<In, Out>>();
+    parsers.addAll(_parsers);
+    parsers.add(next);
+    return new SeqParser<In, Out>(parsers);
+  }
+
   @Override
   public ParseResult<In, List<Out>>  parse(ParserInput<In> in) {
     List<Out> result_vals = new ArrayList<Out>();

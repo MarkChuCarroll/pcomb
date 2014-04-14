@@ -26,7 +26,7 @@ public class OptParser<In, Out> extends Parser<In, Out> {
   }
 
   @Override
-  public org.goodmath.pcomb.Parser.ParseResult<In, Out> parse(
+  public ParseResult<In, Out> parse(
       ParserInput<In> in) {
     ParseResult<In, Out> p = _base.parse(in);
     if (p instanceof Success) {

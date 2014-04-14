@@ -15,14 +15,34 @@
  */
 package org.goodmath.pcomb;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChoiceParser<In, Out> extends Parser<In, Out> {
   private final List<Parser<In, Out>> _choices;
 
+  public ChoiceParser() {
+    this._choices = new ArrayList<Parser<In, Out>>();
+  }
+
+  public ChoiceParser(Parser<In, Out> first, Parser<In, Out> second) {
+    this();
+    _choices.add(first);
+    _choices.add(second);
+  }
+
   public ChoiceParser(List<Parser<In, Out>> choices) {
     this._choices = choices;
   }
+
+  @Override
+  public Parser<In, Out> or(Parser<In, Out> newChoice) {
+    ChoiceParser<In, Out> p = new ChoiceParser<In, Out>();
+    p._choices.addAll(_choices);
+    p._choices.add(newChoice);
+    return p;
+  }
+
 
   @Override
   public org.goodmath.pcomb.Parser.ParseResult<In, Out> parse(
