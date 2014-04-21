@@ -21,19 +21,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.goodmath.pcomb.Failure;
+import org.goodmath.pcomb.ParseResult;
 import org.goodmath.pcomb.Parser;
-import org.goodmath.pcomb.Parser.Success;
-import org.goodmath.pcomb.Transformer;
+import org.goodmath.pcomb.Success;
+import org.goodmath.pcomb.Action;
 import org.goodmath.pcomb.RefParser;
 import org.goodmath.pcomb.StringParserInput;
-import org.goodmath.pcomb.Parser.ParseResult;
 import org.junit.Test;
 
 public class ParserTest {
 
-  public <In, Out> void assertSuccessfulParseEquals(Parser.ParseResult<In, Out> result, Out expected) {
-    assertTrue(result instanceof Parser.Success);
-    Parser.Success<In, Out> success = (Parser.Success<In, Out>)result;
+  public <In, Out> void assertSuccessfulParseEquals(ParseResult<In, Out> result, Out expected) {
+    assertTrue(result instanceof Success);
+    Success<In, Out> success = (Success<In, Out>)result;
     assertEquals(expected, success.getResult());
   }
 
@@ -120,7 +121,7 @@ public class ParserTest {
     assertSuccessfulParseEquals(result, expected);
 
     result = rep4.parse(in);
-    assertTrue(result instanceof Parser.Failure);
+    assertTrue(result instanceof Failure);
   }
 
   @Test
@@ -139,7 +140,7 @@ public class ParserTest {
     StringParserInput in = new StringParserInput("ab");
     Parser<Character, Character> aparser = Parser.match('a');
     Parser<Character, Character> bparser = Parser.match('b');
-    Parser<Character, Character> eofparser = Parser.parseEOF('x');
+    Parser<Character, Character> eofparser = Parser.end('x');
     Parser<Character, List<Character>> abcparser = Parser.seq(aparser).andThen(bparser).andThen(eofparser);
     ParseResult<Character, List<Character>> result = abcparser.parse(in);
     assertSuccessfulParseEquals(result,
@@ -161,15 +162,15 @@ public class ParserTest {
   public void testParensParser() {
     // P -> ( P+ )
     // P -> a
-    Transformer<List<String>, String> listToString = new Transformer<List<String>, String>() {
+    Action<List<String>, String> listToString = new Action<List<String>, String>() {
       @Override
-      public String transform(List<String> in) {
+      public String run(List<String> in) {
         return in.toString();
       }
     };
-    Transformer<Character, String> charToString = new Transformer<Character, String>() {
+    Action<Character, String> charToString = new Action<Character, String>() {
       @Override
-      public String transform(Character in) {
+      public String run(Character in) {
         return in.toString();
       }
     };

@@ -18,6 +18,9 @@ package org.goodmath.pcomb;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A parser which parses many repetitions of some other parser.
+ */
 public class ManyParser<In, Out> extends Parser<In, List<Out>> {
   private final int _atLeast;
   private final Parser<In, Out> _base;

@@ -24,47 +24,17 @@ import java.util.List;
  */
 public abstract class Parser<In, Out> {
   /**
-   * The type returned by invoking a parser.
-   */
-  public static interface ParseResult<I, O> {
-    public ParserInput<I> getRest();
-  }
-
-  /**
-   * The result from a successful parser invocation.
-   */
-  public static class Success<I, O> implements ParseResult<I, O> {
-    private final O _result;
-    private final ParserInput<I> _rest;
-
-
-    public Success(O result, ParserInput<I> rest) {
-      this._result = result;
-      this._rest = rest;
-    }
-
-    public O getResult() { return _result; }
-
-    @Override
-    public ParserInput<I> getRest() { return _rest; }
-  }
-
-  /**
-   * Type representing a failed parser invocation.
-   */
-  public static class Failure<I, O> implements ParseResult<I, O> {
-    public Failure() { }
-    @Override
-    public ParserInput<I> getRest() { return null; }
-  }
-
-  /**
    * The main parse method.
    * @param in the input stream to feed the parser.
    * @return the result of running the parser on the input stream.
    */
   public abstract ParseResult<In, Out> parse(ParserInput<In> in);
 
+  /**
+   * Combinator for combining this parser in a sequence with a second, returning a pair containing
+   * their results if both succeeded.
+   * @param other
+   */
   public <Out2> Parser<In, Pair<Out, Out2>> andPair(final Parser<In, Out2> other) {
       return new Parser<In, Pair<Out, Out2>>() {
         @Override
@@ -86,6 +56,11 @@ public abstract class Parser<In, Out> {
       };
   }
 
+  /**
+   * Combinator for combining this parser in a sequence with another, returning the result
+   * of the first parser.
+   * @param other
+   */
   public <Out2> Parser<In, Out> andFirst(final Parser<In, Out2> other) {
     return new Parser<In, Out>() {
       @Override
@@ -105,6 +80,12 @@ public abstract class Parser<In, Out> {
     };
   }
 
+  /**
+   * Combinator for combining this parser in a sequence with another, returning the result
+   * of the second parser.
+   * @param other
+   * @return
+   */
   public <Out2> Parser<In, Out2> andSecond(final Parser<In, Out2> other) {
     return new Parser<In, Out2>() {
       @Override
@@ -123,12 +104,19 @@ public abstract class Parser<In, Out> {
     };
   }
 
+  /**
+   * Combinator for creating a choice between two parsers of the same type.
+   * @param other
+   */
   public Parser<In, Out> or(final Parser<In, Out> other) {
     return new ChoiceParser<In, Out>(this, other);
   }
 
   /**
-   * Create a parser that chains together a group of parsers to execute in sequence.
+   * Create a parser for a sequence of parsers of the same type in order. This method creates
+   * a sequence of the first two elements. Other elements can be added to the
+   * list using the SeqParser.andThen method. A successful parse returns a
+   * list of the results of its element parsers.
    */
   public static <In, Out> SeqParser<In, Out> seq(Parser<In, Out> first) {
     return new SeqParser<In, Out>(first);
@@ -136,8 +124,7 @@ public abstract class Parser<In, Out> {
 
   /**
    * Return a parser that parses repetitions of this parser.
-   * @param atleast
-   * @return
+   * @param atleast the minimum number of times that the parse must succeed.
    */
   public Parser<In, List<Out>> many(int atleast) {
     return new ManyParser<In, Out>(this, atleast);
@@ -154,7 +141,6 @@ public abstract class Parser<In, Out> {
 
   /**
    * Create a ref parser, for resolving forward refs.
-   * @return
    */
   public static <In, Out> Parser<In, Out> ref() {
     return new RefParser<In, Out>();
@@ -167,7 +153,7 @@ public abstract class Parser<In, Out> {
    * @param trans
    * @return
    */
-  public <X> Parser<In, X> transform(Transformer<Out, X> trans) {
+  public <X> Parser<In, X> transform(Action<Out, X> trans) {
     return new Transform<In, Out, X>(this, trans);
   }
 
@@ -180,7 +166,7 @@ public abstract class Parser<In, Out> {
   public static <In> Parser<In, In> match(final In i) {
     return new Parser<In, In>() {
       @Override
-      public org.goodmath.pcomb.Parser.ParseResult<In, In> parse(
+      public org.goodmath.pcomb.ParseResult<In, In> parse(
           ParserInput<In> in) {
         if (in.first() == i) {
           return new Success<In, In>(i, in.rest());
@@ -191,33 +177,45 @@ public abstract class Parser<In, Out> {
     };
   }
 
+  /**
+   * A standard utility parser for accepting whitespace.
+   */
   public static Parser<Character, Character> space =
-      new CharSetParser(" \t\n").many(0).transform(new Transformer<List<Character>, Character>() {
+      new CharSetParser(" \t\n").many(0).transform(new Action<List<Character>, Character>() {
         @Override
-        public Character transform(List<Character> in) {
+        public Character run(List<Character> in) {
           return ' ';
         }
       });
 
+  /**
+   * Create a parser which accepts a single character, optionally preceeded by any amount of whitespace.
+   * @param c
+   */
   public static Parser<Character, Character> matchWithSpaces(final char c) {
     return space.andSecond(match(c));
   }
 
+  /**
+   * Create a parser which accepts any character from a specific collection of characters, optionally
+   * preceeded by any amount of whitespace.
+   * @param chars
+   */
   public static Parser<Character, Character> charSet(final String chars) {
     return space.andSecond(new CharSetParser(chars));
   }
 
 
   /**
-   * Create a parser which only succeeds on EOF.
+   * Create a parser which only succeeds at the end of the input stream.
    * @param v
    * @return
    */
-  public static <In, X> Parser<In, X> parseEOF(final X v) {
+  public static <In, X> Parser<In, X> end(final X v) {
     return new Parser<In, X>() {
 
       @Override
-      public org.goodmath.pcomb.Parser.ParseResult<In, X> parse(
+      public org.goodmath.pcomb.ParseResult<In, X> parse(
           ParserInput<In> in) {
         if (in.atEnd()) {
           return new Success<In, X>(v, in);

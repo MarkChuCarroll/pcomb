@@ -18,10 +18,13 @@ package org.goodmath.pcomb;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A parser which tries a sequence of parsers, and returns the result from the first one that succeeds.
+ */
 public class ChoiceParser<In, Out> extends Parser<In, Out> {
   private final List<Parser<In, Out>> _choices;
 
-  public ChoiceParser() {
+  private ChoiceParser() {
     this._choices = new ArrayList<Parser<In, Out>>();
   }
 
@@ -45,15 +48,15 @@ public class ChoiceParser<In, Out> extends Parser<In, Out> {
 
 
   @Override
-  public org.goodmath.pcomb.Parser.ParseResult<In, Out> parse(
+  public org.goodmath.pcomb.ParseResult<In, Out> parse(
       ParserInput<In> in) {
     for (Parser<In, Out> parser: _choices) {
       ParseResult<In, Out> result = parser.parse(in);
-      if (result instanceof Parser.Success) {
+      if (result instanceof Success) {
         return result;
       }
     }
-    return new Parser.Failure<In, Out>();
+    return new Failure<In, Out>();
   }
 
 }

@@ -46,7 +46,7 @@ public class RefParser<In, Out> extends Parser<In, Out> {
   }
 
   @Override
-  public org.goodmath.pcomb.Parser.ParseResult<In, Out> parse(
+  public org.goodmath.pcomb.ParseResult<In, Out> parse(
       ParserInput<In> in) {
     if (_ref == null) {
       return new Failure<In, Out>();

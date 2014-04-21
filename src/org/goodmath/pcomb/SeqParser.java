@@ -18,6 +18,10 @@ package org.goodmath.pcomb;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Parser for running a list of parsers of identical type in sequence.
+ * A successful parse produces a list of the results of its component parsers.
+ */
 public class SeqParser<In, Out> extends Parser<In, List<Out>> {
   private final List<Parser<In, Out>> _parsers;
 
@@ -42,13 +46,13 @@ public class SeqParser<In, Out> extends Parser<In, List<Out>> {
     List<Out> result_vals = new ArrayList<Out>();
     for (Parser<In, Out> p : _parsers) {
       ParseResult<In, Out> out = p.parse(in);
-      if (out instanceof Parser.Failure) {
+      if (out instanceof Failure) {
         return new Failure<In, List<Out>>();
       }
-      Parser.Success<In, Out> success = (Parser.Success<In, Out>)out;
+      Success<In, Out> success = (Success<In, Out>)out;
       result_vals.add(success.getResult());
       in = success.getRest();
     }
-    return new Parser.Success<In, List<Out>>(result_vals, in);
+    return new Success<In, List<Out>>(result_vals, in);
   }
 }

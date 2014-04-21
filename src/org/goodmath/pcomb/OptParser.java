@@ -15,6 +15,11 @@
  */
 package org.goodmath.pcomb;
 
+/**
+ * A parser which tries to parse an optional syntax element. It always succeeds -
+ * if the optional element fails, it just succeeds without consuming any input,
+ * and it produces a null result.
+ */
 public class OptParser<In, Out> extends Parser<In, Out> {
 
   private final Parser<In, Out> _base;

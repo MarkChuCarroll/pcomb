@@ -16,24 +16,11 @@
 package org.goodmath.pcomb;
 
 /**
- * An abtract parser input; essentially a lazy stream of some value type.
- * For a lexical analyzer, this would be a stream of characters; for a conventional
- * parser, it would be a stream of tokens.
- * @param <In>
+ * Type representing a failed parser invocation.
  */
-public interface ParserInput<In> {
-  /**
-   * Get the first element from this input stream.
-   */
-  In first();
+public class Failure<In, Out> implements ParseResult<In, Out> {
+  public Failure() { }
 
-  /**
-   * Get the remaining part of this input stream after the first character is consumed.
-   */
-  ParserInput<In> rest();
-
-  /**
-   * Return true if there's no input left in the stream.
-   */
-  boolean atEnd();
+  @Override
+  public ParserInput<In> getRest() { return null; }
 }

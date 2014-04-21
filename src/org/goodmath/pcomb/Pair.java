@@ -15,6 +15,9 @@
  */
 package org.goodmath.pcomb;
 
+/**
+ * A silly utility pair.
+ */
 public class Pair<X, Y> {
   private final X _x;
   private final Y _y;

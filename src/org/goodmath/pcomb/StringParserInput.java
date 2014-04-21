@@ -15,6 +15,9 @@
  */
 package org.goodmath.pcomb;
 
+/**
+ * A simple parser input for character parsers that read from strings.
+ */
 public class StringParserInput implements ParserInput<Character> {
   private final String _str;
   private final int _pos;
