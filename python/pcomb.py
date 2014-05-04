@@ -21,21 +21,23 @@ class ParserInput(object):
     """Returns true if there is no input remaining"""
     pass
 
+
 class ParseResult(object):
-  """Abstract superclass of all ParseResults."""
   def succeeded(self):
     return False
+
 
 class Success(ParseResult):
   """A successful parse result, containing the value produced by a parser,
   and the unconsumed part of its input.
   """
-  def __init__(self, result, rest):
-    self.result = result
+  def __init__(self, output, rest):
+    self.output = output
     self.rest = rest
 
   def succeeded(self):
     return True
+
 
 class Failure(ParseResult):
   def __init__(self):
@@ -48,23 +50,23 @@ class Parser(object):
     """The primary parse method. Takes a parser input, and returns a ParseResult."""
     pass
 
-  def and_then(self, other):
+  def __and__(self, other):
     """Returns a new parser joining this parser with another in a sequence.
-    The result is a list of the results of the sequence elements.
+    The output is a list of the outputs of the sequence elements.
     """
     parsers = [ self, other ]
     return SequenceParser(parsers)
 
-  def or_else(self, other):
+  def __or__(self, other):
     """Returns a new parser joining this parser with another in a choice.
-    The result is the result from the successful alternative.
+    The output is the output from the successful alternative.
     """
     parsers = [ self, other ]
     return ChoiceParser(parsers)
 
   def opt(self):
     """Returns a new parser which accepts an optional occurence of this one.
-    Result is either the parse result of self, or None."""
+    The output is either the parser output of self, or None."""
     return OptParser(self)
 
   def many(self, minrep=0):
@@ -75,7 +77,7 @@ class Parser(object):
   @classmethod
   def match(self, v):
     """Return a parser which accepts any value in an input set.
-    The result is the value that matched.
+    The output is the value that matched.
     """
     return SetParser(v)
 
@@ -104,21 +106,21 @@ class SequenceParser(Parser):
     result = "Sequence[" +  ",".join(p.pr() for p in self.parsers) + "]"
     return result
 
-  def and_then(self, next_parser):
+  def __and__(self, next_parser):
     result = SequenceParser(self.parsers[:])
     result.parsers.append(next_parser);
     return result
 
   def parse(self, inp):
-    results = []
+    outputs = []
     remaining = inp
     for p in self.parsers:
       r = p.parse(remaining)
       if not r.succeeded():
         return Failure()
       remaining = r.rest
-      results.append(r.result)
-    return Success(results, remaining)
+      outputs.append(r.output)
+    return Success(outputs, remaining)
 
 class ChoiceParser(Parser):
   def __init__(self, choices=[]):
@@ -127,7 +129,7 @@ class ChoiceParser(Parser):
   def pr(self):
     return "Choice[" +  ",".join(p.pr() for p in self.choices) + "]"
 
-  def or_else(self, other):
+  def __or__(self, other):
     result = ChoiceParser(self.choices[:])
     result.choices.append(other)
     return result
@@ -163,16 +165,16 @@ class ManyParser(Parser):
 
   def parse(self, inp):
     reps = 0
-    result = []
+    output = []
     remaining_input = inp
     r = self.parser.parse(remaining_input)
     while r.succeeded():
-      result.append(r.result)
+      output.append(r.output)
       reps += 1
       remaining_input = r.rest
       r = self.parser.parse(remaining_input)
     if reps >= self.min_reps:
-      return Success(result, remaining_input)
+      return Success(output, remaining_input)
     else:
       return Failure()
 
@@ -201,8 +203,8 @@ class Reference(Parser):
 
 class Action(Parser):
   """A parser that attaches a semantic action to another parser.
-  This succeeds if the embedded parser succeeds; the result
-  is value returned by applying the action function to the result
+  This succeeds if the embedded parser succeeds; the output
+  is value returned by applying the action function to the output
   of the embedded parser.
   """
   def __init__(self, parser, act):
@@ -215,7 +217,7 @@ class Action(Parser):
   def parse(self, inp):
     result = self.parser.parse(inp)
     if result.succeeded():
-      return Success(self.action(result.result), result.rest)
+      return Success(self.action(result.output), result.rest)
     else:
       return Failure()
 

@@ -57,15 +57,19 @@ def eval_mult(lst):
 # parens : '(' expr ')'
 # number: digit+
 
-digit = Parser.match(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
-number = Action(digit.many(1), digits_to_
-number)
 
-parens = Action(Parser.match(['(']).and_then(Reference('expr')).and_then(Parser.match([')'])),
-                lambda result: result[1])
-simple = number.or_else(parens)
-unary_expr = Action(Parser.match(['-']).opt().and_then(simple), unary_to_number)
-mult_expr = Action(unary_expr.and_then((Parser.match(['*', '/']).and_then(unary_expr)).many()), eval_mult)
-add_expr = Action(mult_expr.and_then((Parser.match(['-', '+']).and_then(mult_expr)).many()), eval_add)
+digit = Parser.match(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
+number = Action(digit.many(1), digits_to_number)
+
+parens = Action(Parser.match(['(']) & Reference('expr') & Parser.match([')']),
+               lambda result: result[1])
+simple = number | parens
+unary_expr = Action(Parser.match(['-']).opt()  & simple, unary_to_number)
+mult_expr = Action(unary_expr &  (Parser.match(['*', '/']) & unary_expr).many(), eval_mult)
+add_expr = Action(mult_expr & (Parser.match(['-', '+']) & mult_expr).many(), eval_add)
 expr = add_expr
 Reference.register_named_parser('expr', add_expr)
+
+
+inp = StringParserInput("1+2*(3+5*4)*(6+7)")
+print(expr.parse(inp).output)
