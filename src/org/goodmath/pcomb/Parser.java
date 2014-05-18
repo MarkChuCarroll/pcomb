@@ -142,7 +142,7 @@ public abstract class Parser<In, Out> {
   /**
    * Create a ref parser, for resolving forward refs.
    */
-  public static <In, Out> Parser<In, Out> ref() {
+  public static <In, Out> RefParser<In, Out> ref() {
     return new RefParser<In, Out>();
   }
 
@@ -153,7 +153,7 @@ public abstract class Parser<In, Out> {
    * @param trans
    * @return
    */
-  public <X> Parser<In, X> transform(Action<Out, X> trans) {
+  public <X> Parser<In, X> action(Action<Out, X> trans) {
     return new Transform<In, Out, X>(this, trans);
   }
 
@@ -181,7 +181,7 @@ public abstract class Parser<In, Out> {
    * A standard utility parser for accepting whitespace.
    */
   public static Parser<Character, Character> space =
-      new CharSetParser(" \t\n").many(0).transform(new Action<List<Character>, Character>() {
+      new CharSetParser(" \t\n").many(0).action(new Action<List<Character>, Character>() {
         @Override
         public Character run(List<Character> in) {
           return ' ';

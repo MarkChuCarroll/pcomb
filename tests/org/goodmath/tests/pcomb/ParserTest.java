@@ -22,8 +22,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.goodmath.pcomb.Failure;
+import org.goodmath.pcomb.Pair;
 import org.goodmath.pcomb.ParseResult;
 import org.goodmath.pcomb.Parser;
+import org.goodmath.pcomb.ParserInput;
 import org.goodmath.pcomb.Success;
 import org.goodmath.pcomb.Action;
 import org.goodmath.pcomb.RefParser;
@@ -175,9 +177,9 @@ public class ParserTest {
       }
     };
 
-    Parser<Character, String> id = Parser.charSet("abcdefghijklmnopqrstuvwxyz").transform(charToString);
+    Parser<Character, String> id = Parser.charSet("abcdefghijklmnopqrstuvwxyz").action(charToString);
     RefParser<Character, String> ref = new RefParser<Character, String>();
-    Parser<Character, String> parens = Parser.matchWithSpaces('(').andSecond(ref.many(1).transform(listToString)).andFirst(Parser.matchWithSpaces(')'));
+    Parser<Character, String> parens = Parser.matchWithSpaces('(').andSecond(ref.many(1).action(listToString)).andFirst(Parser.matchWithSpaces(')'));
     Parser<Character, String> choice = parens.or(id);
     ref.setRef(choice);
 
@@ -187,6 +189,81 @@ public class ParserTest {
     Success<Character, String> success = (Success<Character, String>) result;
 
     assertEquals("[[[a, [d, e], [q]], [[a, b, c]]]]", success.getResult());
+  }
 
+
+  @Test
+  public void testArithmetic() {
+    final Action<Pair<Character, Integer>, Integer> unary_to_int = new Action<Pair<Character, Integer>, Integer>() {
+      @Override
+      public Integer run(Pair<Character, Integer> p) {
+        if (p.getFirst() == '-') {
+          return -p.getSecond();
+        } else {
+          return p.getSecond();
+        }
+      }
+    };
+
+    final Action<List<Character>, Integer> digits_to_int = new Action<List<Character>, Integer>() {
+      @Override
+      public Integer run(List<Character> digchars) {
+        StringBuilder numstr = new StringBuilder(digchars.size());
+        for (char c: digchars) {
+          numstr.append(c);
+        }
+        return Integer.parseInt(numstr.toString());
+      }
+    };
+
+    final Action<Pair<Integer, List<Pair<Character, Integer>>>, Integer> mult_to_int =
+        new Action<Pair<Integer, List<Pair<Character, Integer>>>, Integer>() {
+      @Override
+      public Integer run(Pair<Integer, List<Pair<Character, Integer>>> val) {
+        int result = val.getFirst();
+        for (Pair<Character, Integer> term: val.getSecond()) {
+          if (term.getFirst() == '*') {
+            result = result * term.getSecond();
+          } else {
+            result = result / term.getSecond();
+          }
+        }
+        return result;
+      }
+    };
+
+    final Action<Pair<Integer, List<Pair<Character, Integer>>>, Integer> add_to_int =
+        new Action<Pair<Integer, List<Pair<Character, Integer>>>, Integer>() {
+      @Override
+      public Integer run(Pair<Integer, List<Pair<Character, Integer>>> val) {
+        int result = val.getFirst();
+        for (Pair<Character, Integer> term: val.getSecond()) {
+          if (term.getFirst() == '+') {
+            result = result + term.getSecond();
+          } else {
+            result = result - term.getSecond();
+          }
+        }
+        return result;
+      }
+    };
+
+
+    Parser<Character, Integer> number = Parser.charSet("0123456789").many(1).action(digits_to_int);
+    RefParser<Character, Integer> exprRef = Parser.ref();
+    Parser<Character, Integer> parens = Parser.match('(').andSecond(exprRef).andFirst(Parser.match(')'));
+    Parser<Character, Integer> simple = number.or(parens);
+    Parser<Character, Integer> unary_expr = Parser.match('-').opt('+').andPair(simple).action(unary_to_int);
+    Parser<Character, Integer> mult_expr =
+        unary_expr.andPair((Parser.charSet("*/").andPair(unary_expr)).many(0)).action(mult_to_int);
+    Parser<Character, Integer> add_expr =
+        mult_expr.andPair((Parser.charSet("+-").andPair(mult_expr)).many(0)).action(add_to_int);
+    exprRef.setRef(add_expr);
+
+    ParserInput<Character> in = new StringParserInput("1+2*(3+5*4)*(6+7)");
+    ParseResult<Character, Integer> result = add_expr.parse(in);
+    assertTrue(result instanceof Success<?, ?>);
+    Success<Character, Integer> success = (Success<Character, Integer>)result;
+    assertEquals(1 + 23*26, success.getResult().intValue());
   }
 }
