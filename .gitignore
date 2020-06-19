@@ -1,1 +1,5 @@
 /bin
+/python/build/
+/python/dist/
+/python/pcomb.egg-info/
+*.pyc
